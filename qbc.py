@@ -2,9 +2,10 @@ import pennylane as qml
 from pennylane import numpy as np
 from itertools import chain
 import matplotlib.pyplot as plt
+from scipy import linalg as la
 
-num_t_wires = 2
-num_n_wires = 2
+num_n_wires =  5
+num_t_wires = 10
 
 t_wires = range(0, num_t_wires)
 n_wires = range(num_t_wires, num_t_wires + num_n_wires)
@@ -13,19 +14,26 @@ tot_wires = range(0,  num_t_wires + num_n_wires + 2)
 
 dev = qml.device("default.qubit", wires=tot_wires, shots=1)
 
+x = np.random.randint(0, 2, size=(2**num_n_wires))
+x_indices = [[int(k) for k in format(elem, '0%sb' % num_n_wires)] for elem in np.nonzero(x)[0]]
+# print("x =", x)
+# print("x_indices =", x_indices)
+y = np.random.randint(0, 2, size=(2**num_n_wires))
+y_indices = [[int(k) for k in format(elem, '0%sb' % num_n_wires)] for elem in np.nonzero(y)[0]]
+# print("y =", y)
+# print("y_indices =", y_indices)
+
+# Oracle A encoding x data
 def U_x():
-    # oracle A
-    # for i in n_wires:
-    #     qml.CNOT(wires=[i, o_wires[0]])    
-    # qml.PauliX(wires=o_wires[0])
-    qml.PauliX(wires=o_wires[0])
+    for one_idx in x_indices:
+        qml.ctrl(qml.PauliX, control=n_wires, control_values=one_idx)(wires=o_wires[0])
 
+# Oracle B encoding y data
 def U_y():
-    # oracle B
-    for i in n_wires:
-        qml.CNOT(wires=[i, o_wires[1]])
-    # qml.PauliX(wires=o_wires[1])
+    for one_idx in y_indices:
+        qml.ctrl(qml.PauliX, control=n_wires, control_values=one_idx)(wires=o_wires[1])    
 
+# Phase oracle used in Grover operator
 def phase_oracle(U_x, U_y):
     U_x()
     U_y()
@@ -33,10 +41,12 @@ def phase_oracle(U_x, U_y):
     U_y()
     U_x()
 
+# Grover operator used in QPE
 def grover_operator(U_x, U_y):
-    qml.GroverOperator(wires=n_wires)
     phase_oracle(U_x, U_y)
+    qml.GroverOperator(wires=n_wires)
 
+# QBC circuit
 @qml.qnode(dev)
 def qbc(U_x, U_y):
     for i in n_wires:
@@ -45,6 +55,7 @@ def qbc(U_x, U_y):
     qml.QuantumPhaseEstimation(my_unitary, target_wires=range(num_t_wires, num_t_wires + num_n_wires + 2), estimation_wires=t_wires)
     return qml.probs(wires=t_wires)
 
+# Helper fct for debugging U_x oracle
 @qml.qnode(dev)
 def U_x_vec(i):
     qml.BasisEmbedding(i, wires=n_wires)
@@ -58,6 +69,7 @@ def U_x_vec_full():
     res = [U_x_vec_val(i) for i in range(2**num_n_wires)]
     return res
 
+# Helper fct for debugging U_y oracle
 @qml.qnode(dev)
 def U_y_vec(i):
     qml.BasisEmbedding(i, wires=n_wires)
@@ -72,22 +84,9 @@ def U_y_vec_full():
     return res
 
 probs = qbc(U_x, U_y)
-print("t_probs =", probs)
-# plt.bar(range(2**num_t_wires), probs)
-# plt.show()
-
 j = np.argmax(probs)
-print("j =", j)
 theta = 2 * np.pi * j / 2**num_t_wires
-print("theta =", theta)
 f = np.sin(theta/2)**2
-print("f =", f)
 rho = 2**num_n_wires * f
 print("rho =", rho)
-
-x = np.array(U_x_vec_full())
-y = np.array(U_y_vec_full())
-
-print("U_x_vec_full =", x)
-print("U_y_vec_full =", y)
 print("x * y = ", np.inner(x, y))
