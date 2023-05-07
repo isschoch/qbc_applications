@@ -20,4 +20,10 @@ def test_qbc_algorithm(n, num_t_wires):
     x = np.random.randint(0, 2, size=(2**n))
     y = np.random.randint(0, 2, size=(2**n))
     rho, _, _, _, _ = qbc_algorithm(x, y, num_t_wires)
-    assert math.isclose(rho, np.inner(x, y), rel_tol=1e-1)
+    assert math.isclose(rho, np.inner(x, y), rel_tol=1e-3)
+
+def test_qbc_algorithm():
+    x = [1, 0, 0, 1, 0, 1, 1, 1, 0]
+    y = [0, 0, 1, 1, 1, 1, 1, 0, 1]
+    rho, _, _, _, _ = qbc_algorithm(x, y)
+    assert math.isclose(rho, np.inner(x, y), rel_tol=1e-3)
