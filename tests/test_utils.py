@@ -3,17 +3,26 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from addition import *
+from addition_two_wires import *
 from qbc import *
 import math
 import pytest
 
-@pytest.mark.parametrize("a, b", [(x, y) for x in range(2**n_wires) for y in range(2**n_wires)])
+@pytest.mark.parametrize("a, b", [(x, y) for x in range(2**num_n_wires) for y in range(2**num_n_wires)])
 def test_addition(a, b):
-    assert addition_int_result(a, b) == ((a + b) % 2**n_wires)
+    assert addition_int_result(a, b) == ((a + b) % 2**num_n_wires)
 
-@pytest.mark.parametrize("a, b", [(x, y) for x in range(2**n_wires) for y in range(n_wires)])
+@pytest.mark.parametrize("a, b", [(x, y) for x in range(2**num_n_wires) for y in range(2**num_n_wires)])
 def test_subtraction(a, b):
-    assert subtraction_int_result(a, b) == ((a - b + 2**n_wires) % 2**n_wires)
+    assert subtraction_int_result(a, b) == ((b - a + 2**num_n_wires) % 2**num_n_wires)
+
+# @pytest.mark.parametrize("a, b", [(x, y) for x in range(2**num_n_wires) for y in range(2**num_n_wires)])
+# def test_addition_two_wires(a, b):
+#     assert addition_two_wires_int_result(a, b) == ((a + b) % 2**num_n_wires)
+
+@pytest.mark.parametrize("a, b", [(x, y) for x in range(2**num_n_wires) for y in range(num_n_wires)])
+def test_subtraction_two_wires(a, b):
+    assert subtraction_two_wires_int_result(a, b) == ((b - a + 2**num_n_wires) % 2**num_n_wires)
 
 @pytest.mark.parametrize("n, num_t_wires", [(n, num_t_wires) for n in range(2, 6) for num_t_wires in range(10, 11)])
 def test_qbc_algorithm(n, num_t_wires):
@@ -22,8 +31,12 @@ def test_qbc_algorithm(n, num_t_wires):
     rho, _, _, _, _ = qbc_algorithm(x, y, num_t_wires)
     assert math.isclose(rho, np.inner(x, y), rel_tol=1e-1)
 
-def test_qbc_algorithm_weird_length():
-    x = [1, 0, 0, 1, 0, 1, 1, 1, 0]
-    y = [0, 0, 1, 1, 1, 1, 1, 0, 1]
-    rho, _, _, _, _ = qbc_algorithm(x, y)
-    assert math.isclose(rho, np.inner(x, y), rel_tol=1e-3)
+@pytest.mark.parametrize("N", [N for N in range(4, 12)])
+def test_qbc_algorithm_weird_lengths(N):
+    # x = [1, 0, 0, 1, 0, 1, 1, 1, 0]
+    # y = [0, 0, 1, 1, 1, 1, 1, 0, 1]
+    x = np.random.randint(0, 2, size=(N))
+    y = np.random.randint(0, 2, size=(N))
+    rho, _, _, _, _ = qbc_algorithm(x, y, num_t_wires=10)
+    assert math.isclose(rho, np.inner(x, y), rel_tol=1e-1)
+

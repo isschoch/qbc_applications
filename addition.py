@@ -22,7 +22,7 @@ def addition(m, k):
 
 
 def subtraction(m, k):
-    return addition(m, -k)
+    return addition(-m, k)
 
 def addition_int_result(m, k):
     return binary_to_int(addition(m, k))
