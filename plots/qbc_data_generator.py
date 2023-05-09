@@ -1,5 +1,6 @@
 import sys
 import os
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from qbc import *
 import math
@@ -24,5 +25,5 @@ for (t_wire_idx, num_t_wires) in enumerate(num_t_wires_range):
         t_wire_data[t_wire_idx, rep_idx] = error
 
 df = pd.DataFrame(t_wire_data)
-df.insert(0, 'new_col', num_t_wires_range)
+df.insert(0, "new_col", num_t_wires_range)
 df.to_csv("./data/qbc_data.csv", header=None, index=None)

@@ -8,15 +8,18 @@ tot_wires = range(0, 5)
 
 dev = qml.device("default.qubit", wires=tot_wires, shots=1)
 
-x = np.random.randint(0, 2, size=(2**4)) 
+x = np.random.randint(0, 2, size=(2**4))
 
-def A_oracle(i):    
+
+def A_oracle(i):
     qml.BasisEmbedding(x[i], wires=o_wires)
+
 
 @qml.qnode(dev)
 def tmp_circuit(i):
     qml.BasisEmbedding(i, wires=n_wires)
     return qml.sample(wires=n_wires)
+
 
 @qml.qnode(dev)
 def circuit():
@@ -25,8 +28,10 @@ def circuit():
     A_oracle(binary_to_int(i_idx))
     return qml.sample()
 
+
 def prep_state(i):
     qml.BasisEmbedding(i, wires=n_wires)
+
 
 @qml.qnode(dev)
 def tmp_x_oracle():
@@ -35,6 +40,7 @@ def tmp_x_oracle():
         qml.CNOT(wires=[i, o_wires[0]])
 
     return qml.sample()
+
 
 # print("x = ", x)
 

@@ -4,6 +4,7 @@ from itertools import chain
 import matplotlib.pyplot as plt
 from scipy import linalg as la
 
+
 def qbc_conv_algorithm(x, y, k, num_t_wires=10):
     assert len(x) == len(y)
     num_n_wires = int(np.ceil(np.log2(len(x))))
@@ -13,37 +14,49 @@ def qbc_conv_algorithm(x, y, k, num_t_wires=10):
     n_wires = range(num_t_wires, num_t_wires + num_n_wires)
     c_wires = range(num_t_wires + num_n_wires, num_t_wires + 2 * num_n_wires)
     o_wires = range(num_t_wires + 2 * num_n_wires, num_t_wires + 2 * num_n_wires + 2)
-    tot_wires = range(0,  num_t_wires + 2 * num_n_wires + 2)
+    tot_wires = range(0, num_t_wires + 2 * num_n_wires + 2)
 
     dev = qml.device("default.qubit", wires=tot_wires, shots=1)
 
-    x_indices = [[int(k) for k in format(elem, '0%sb' % num_n_wires)] for elem in np.nonzero(x)[0]]
+    x_indices = [
+        [int(k) for k in format(elem, "0%sb" % num_n_wires)]
+        for elem in np.nonzero(x)[0]
+    ]
     # print("x =", x)
     # print("x_indices =", x_indices)
-    
-    y_indices = [[int(k) for k in format(elem, '0%sb' % num_n_wires)] for elem in np.nonzero(y)[0]]
+
+    y_indices = [
+        [int(k) for k in format(elem, "0%sb" % num_n_wires)]
+        for elem in np.nonzero(y)[0]
+    ]
     # print("y =", y)
     # print("y_indices =", y_indices)
 
     # Oracle A encoding x data
     def U_x():
         for one_idx in x_indices:
-            qml.ctrl(qml.PauliX, control=n_wires, control_values=one_idx)(wires=o_wires[0])
+            qml.ctrl(qml.PauliX, control=n_wires, control_values=one_idx)(
+                wires=o_wires[0]
+            )
 
     # Oracle B encoding y data
     def U_y():
         for one_idx in y_indices:
-            qml.ctrl(qml.PauliX, control=c_wires, control_values=one_idx)(wires=o_wires[1])    
+            qml.ctrl(qml.PauliX, control=c_wires, control_values=one_idx)(
+                wires=o_wires[1]
+            )
 
     def add_k_fourier(k, wires):
         for j in range(len(wires)):
             qml.RZ(k * np.pi / (2**j), wires=wires[j])
 
     def U_minus():
-        qml.adjoint(qml.QFT)(wires=c_wires) # step 3
-        for (n_idx, n_wire) in enumerate(n_wires):
-            qml.ctrl(add_k_fourier, control=n_wire)(2**(num_n_wires - n_idx - 1), wires=c_wires)
-        qml.QFT(wires=c_wires) # step 1
+        qml.adjoint(qml.QFT)(wires=c_wires)  # step 3
+        for n_idx, n_wire in enumerate(n_wires):
+            qml.ctrl(add_k_fourier, control=n_wire)(
+                2 ** (num_n_wires - n_idx - 1), wires=c_wires
+            )
+        qml.QFT(wires=c_wires)  # step 1
 
     # Phase oracle used in Grover operator
     def phase_oracle(U_x, U_y, U_minus):
@@ -71,7 +84,13 @@ def qbc_conv_algorithm(x, y, k, num_t_wires=10):
         #     qml.Hadamard(wires=i)
 
         my_unitary = qml.matrix(grover_operator)(U_x, U_y, U_minus)
-        qml.QuantumPhaseEstimation(my_unitary, target_wires=range(num_t_wires, num_t_wires + num_n_wires + num_c_wires + 2), estimation_wires=t_wires)
+        qml.QuantumPhaseEstimation(
+            my_unitary,
+            target_wires=range(
+                num_t_wires, num_t_wires + num_n_wires + num_c_wires + 2
+            ),
+            estimation_wires=t_wires,
+        )
         return qml.probs(wires=t_wires)
 
     # Helper fct for debugging U_x oracle
@@ -101,24 +120,25 @@ def qbc_conv_algorithm(x, y, k, num_t_wires=10):
     def U_y_vec_full():
         res = [U_y_vec_val(i) for i in range(2**num_n_wires)]
         return res
-    
+
     probs = qbc(U_x, U_y, U_minus)
     j = np.argmax(probs)
     theta = 2 * np.pi * j / 2**num_t_wires
-    f = np.sin(theta/2)**2
+    f = np.sin(theta / 2) ** 2
     rho = 2**num_n_wires * f
     return rho, f, theta, j, probs
 
+
 x = [1, 1, 1, 1, 0, 1, 0, 0]
 y = [1, 0, 0, 0, 0, 1, 1, 0]
-for k in range (8):
+for k in range(8):
     rho, _, _, _, _ = qbc_conv_algorithm(x, y, k, 10)
 
     def convolution_analytic(x, y, k):
         sum = 0
         for i in range(len(x)):
             sum += x[i] * y[(k - i + len(x)) % len(y)]
-        return sum 
+        return sum
 
     print("rho =", rho)
     print("x * y =", convolution_analytic(x, y, k))

@@ -3,9 +3,10 @@ from pennylane import numpy as np
 from itertools import chain
 import matplotlib.pyplot as plt
 from scipy import linalg as la
+from scipy.spatial.distance import hamming
 
 
-def qbc_algorithm(x, y, num_t_wires=10):
+def qbc_algorithm_hamming(x, y, num_t_wires=10):
     assert len(x) == len(y)
     num_n_wires = int(np.ceil(np.log2(len(x))))
 
@@ -48,7 +49,9 @@ def qbc_algorithm(x, y, num_t_wires=10):
     def phase_oracle(U_x, U_y):
         U_x()
         U_y()
-        qml.CZ(wires=[o_wires[0], o_wires[1]])
+        qml.CNOT(wires=[o_wires[0], o_wires[1]])
+        qml.PauliZ(wires=o_wires[1])
+        qml.CNOT(wires=[o_wires[0], o_wires[1]])
         U_y()
         U_x()
 
@@ -104,3 +107,12 @@ def qbc_algorithm(x, y, num_t_wires=10):
     f = np.sin(theta / 2) ** 2
     rho = 2**num_n_wires * f
     return rho, f, theta, j, probs
+
+
+x = np.array([1, 0, 1, 0])
+y = np.array([0, 1, 0, 0])
+
+rho, _, _, _, _ = qbc_algorithm_hamming(x, y)
+
+print("hammind distance of {x} and {y} is {rho}".format(x=x, y=y, rho=rho))
+print("anayltical hamming distance is {dist}".format(dist=hamming(x, y) * len(x)))

@@ -7,7 +7,8 @@ tot_wires = range(0, 6)
 
 dev = qml.device("default.qubit", wires=tot_wires, shots=1)
 
-x = np.random.randint(0, 2, size=(2**4, 1)) 
+x = np.random.randint(0, 2, size=(2**4, 1))
+
 
 @qml.qnode(dev)
 def grover_operator():
@@ -16,11 +17,12 @@ def grover_operator():
 
     return qml.state()
 
+
 def phase_oracle():
     # oracle A
     for i in n_wires:
         qml.CNOT(wires=[i, o_wires[0]])
-    
+
     # oracle B
     for i in n_wires:
         qml.CNOT(wires=[i, o_wires[1]])
@@ -30,9 +32,10 @@ def phase_oracle():
     # oracle A
     for i in n_wires:
         qml.CNOT(wires=[i, o_wires[0]])
-    
+
     # oracle B
     for i in n_wires:
         qml.CNOT(wires=[i, o_wires[1]])
+
 
 print(grover_operator())
