@@ -66,7 +66,7 @@ def simplified_quantum_counting(x):
     success_rate = 0.0
     k = 0
     r_k_prev = 0
-    epsilon = 0.1
+    epsilon = 0.3
     gamma = 0.5
     while success_rate < 0.95:
         k += 1
