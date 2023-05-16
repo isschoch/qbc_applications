@@ -15,7 +15,7 @@ def qbc_algorithm_hamming(x, y, num_t_wires=10):
     o_wires = range(num_t_wires + num_n_wires, num_t_wires + num_n_wires + 2)
     tot_wires = range(0, num_t_wires + num_n_wires + 2)
 
-    dev = qml.device("default.qubit", wires=tot_wires, shots=1)
+    dev = qml.device("default.qubit", wires=tot_wires)
 
     x_indices = [
         [int(k) for k in format(elem, "0%sb" % num_n_wires)]

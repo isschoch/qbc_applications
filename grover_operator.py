@@ -12,8 +12,8 @@ x = np.random.randint(0, 2, size=(2**4, 1))
 
 @qml.qnode(dev)
 def grover_operator():
-    qml.GroverOperator(wires=n_wires)
     phase_oracle()
+    qml.GroverOperator(wires=n_wires)
 
     return qml.state()
 
