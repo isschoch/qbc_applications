@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from scipy import linalg as la
 
 
-def qbc_conv(x, y, k, num_t_wires=10):
+def qbc_conv_algorithm_extended_space(x, y, num_t_wires=10):
     assert len(x) == len(y)
     num_n_wires = int(np.ceil(np.log2(len(x))))
     num_c_wires = num_n_wires
@@ -46,27 +46,10 @@ def qbc_conv(x, y, k, num_t_wires=10):
                 wires=o_wires[1]
             )
 
-    def qft_adder():
-        qml.adjoint(qml.QFT(wires=c_wires))  # step 3
-        for n_idx, n_wire in enumerate(n_wires):
-            qml.ctrl(add_k_fourier, control=n_wire)(
-                2 ** (num_n_wires - n_idx - 1), wires=c_wires
-            )
-        qml.QFT(wires=c_wires)  # step 1
-
-    def add_k_fourier(l, wires):
-        for j in range(len(wires)):
-            qml.RZ(l * np.pi / (2**j), wires=wires[j])
-
     # Copies entries from n register to c register
     def U_copy():
         for i in range(num_n_wires):
             qml.CNOT(wires=[n_wires[i], c_wires[i]])
-        for c_wire in c_wires:
-            qml.PauliX(wires=c_wire)
-        qml.QFT(wires=c_wires)
-        add_k_fourier(k, wires=c_wires)
-        qml.adjoint(qml.QFT(wires=c_wires))
 
     # Phase oracle used in Grover operator
     def phase_oracle():
@@ -98,6 +81,7 @@ def qbc_conv(x, y, k, num_t_wires=10):
             qml.Hadamard(wires=i)
 
         my_unitary = qml.matrix(grover_operator)()
+        print("my_unitary.size = ", np.shape(my_unitary))
         qml.QuantumPhaseEstimation(
             my_unitary,
             target_wires=range(num_t_wires, num_tot_wires),
@@ -143,20 +127,22 @@ def qbc_conv(x, y, k, num_t_wires=10):
     return rho, f, theta, j, probs
 
 
-x = [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1]
-y = [0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1]
+# x = [1, 1, 0, 0]
+# y = [1, 0, 0, 1]
 
-for k in range(len(x)):
-    rho, _, _, _, probs = qbc_conv(x, y, k, 9)
+# probs, _, _, _, _ = qbc_conv_algorithm(x, y, 10)
 
-    def convolution_analytic(x, y, k):
-        sum = 0
-        for i in range(len(x)):
-            sum += x[i] * y[(k - (i + 1) + len(x)) % len(y)]
-        return sum
+# print(
+#     "np.argmax(probs) = {argmax}, probs = {probs}".format(
+#         argmax=np.argmax(probs), probs=probs
+#     )
+# )
 
-    print(
-        "x * y = {analytic}, rho = {rho}".format(
-            analytic=convolution_analytic(x, y, k), rho=rho
-        )
-    )
+# for k in range(len(x)):
+#     rho, _, _, _, probs = qbc_conv_algorithm(x, y, 10)
+
+#     print(
+#         "x * y = {analytic}, rho = {rho}, probs = {probs}".format(
+#             analytic=np.inner(x, y), rho=rho, probs=probs
+#         )
+#     )

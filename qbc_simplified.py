@@ -7,30 +7,47 @@ import math
 
 
 x = np.zeros(2**10)
-marked_indices = np.array([3])
+marked_indices_x = np.array([0, 3, -1])
 
-for idx in marked_indices:
+for idx in marked_indices_x:
     x[idx] = 1
+
+y = np.zeros(2**10)
+marked_indices_y = np.array([0, 4])
+
+for idx in marked_indices_y:
+    y[idx] = 1
 
 num_n_wires = int(np.ceil(np.log2(len(x))))
 n_wires = range(0, num_n_wires)
-o_wires = range(num_n_wires, num_n_wires + 1)
-tot_wires = range(0, num_n_wires + 1)
+o_wires = range(num_n_wires, num_n_wires + 2)
+tot_wires = range(0, num_n_wires + 2)
 dev = qml.device("default.qubit", wires=tot_wires)
 x_indices = [
     [int(k) for k in format(elem, "0%sb" % num_n_wires)] for elem in np.nonzero(x)[0]
+]
+y_indices = [
+    [int(k) for k in format(elem, "0%sb" % num_n_wires)] for elem in np.nonzero(y)[0]
 ]
 
 
 # Oracle A encoding x data
 def U_x():
     for one_idx in x_indices:
-        qml.ctrl(qml.PauliX, control=n_wires, control_values=one_idx)(wires=o_wires)
+        qml.ctrl(qml.PauliX, control=n_wires, control_values=one_idx)(wires=o_wires[0])
+
+
+# Oracle B encoding y data
+def U_y():
+    for one_idx in y_indices:
+        qml.ctrl(qml.PauliX, control=n_wires, control_values=one_idx)(wires=o_wires[1])
 
 
 def phase_oracle():
     U_x()
-    qml.PauliZ(wires=o_wires)
+    U_y()
+    qml.CZ(wires=o_wires)
+    U_y()
     U_x()
 
 
@@ -61,7 +78,7 @@ def lemma_2(theta_min, theta_max):
 
 
 def simplified_quantum_counting(x):
-    theta = math.asin(math.sqrt(np.count_nonzero(x) / 2**num_n_wires))
+    theta = math.asin(math.sqrt(np.inner(x, y) / 2**num_n_wires))
     print("theta = ", theta)
     success_rate = 0.0
     k = 0
@@ -79,8 +96,10 @@ def simplified_quantum_counting(x):
         if r_k_prev != r_k:
             result = grover_alg(x, (r_k - 1) // 2)
             tmp_sum = 0.0
-            for idx in marked_indices:
-                tmp_sum += result[idx]
+            for idx_x in marked_indices_x:
+                for idx_y in marked_indices_y:
+                    if idx_x == idx_y:
+                        tmp_sum += result[idx_x]
             success_rate = tmp_sum
 
         r_k_prev = r_k
@@ -100,7 +119,9 @@ def simplified_quantum_counting(x):
     success_rate = 0.0
     t = 0
     r_t_prev = 0
-    while theta_max > (1 + epsilon / 5) * theta_min:
+    while theta_max > (1 + epsilon / 5) * theta_min and round(
+        2**num_n_wires * math.sin(theta_min) ** 2
+    ) != round(2**num_n_wires * math.sin(theta_max) ** 2):
         r_t = lemma_2(theta_min, theta_max)
         print(
             "t = {t}, r_t = {r_t}, success_rate = {success_rate}".format(
@@ -108,18 +129,19 @@ def simplified_quantum_counting(x):
             )
         )
         print(
-            "theta_min = {theta_min}, theta_max = {theta_max}, (1 + epsilon / 5) * theta_min = {val}, r_t * (theta_max - theta_min) = {diff}".format(
+            "theta_min = {theta_min}, theta_max = {theta_max}, (1 + epsilon / 5) * theta_min = {val}".format(
                 theta_min=theta_min,
                 theta_max=theta_max,
                 val=(1 + epsilon / 5) * theta_min,
-                diff=r_t * (theta_max - theta_min),
             )
         )
         if r_t != r_t_prev:
             result = grover_alg(x, (r_t - 1) // 2)
             tmp_sum = 0.0
-            for idx in marked_indices:
-                tmp_sum += result[idx]
+            for idx_x in marked_indices_x:
+                for idx_y in marked_indices_y:
+                    if idx_x == idx_y:
+                        tmp_sum += result[idx_x]
             success_rate = tmp_sum
 
         gamma = theta_max / theta_min - 1.0
