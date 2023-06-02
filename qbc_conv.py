@@ -59,23 +59,23 @@ def qbc_conv(x, y, k, num_t_wires=10):
             qml.RZ(l * np.pi / (2**j), wires=wires[j])
 
     # Copies entries from n register to c register
-    def U_copy():
+    def U_minus():
         for i in range(num_n_wires):
             qml.CNOT(wires=[n_wires[i], c_wires[i]])
         for c_wire in c_wires:
             qml.PauliX(wires=c_wire)
         qml.QFT(wires=c_wires)
-        add_k_fourier(k, wires=c_wires)
+        add_k_fourier(k + 1, wires=c_wires)
         qml.adjoint(qml.QFT(wires=c_wires))
 
     # Phase oracle used in Grover operator
     def phase_oracle():
         U_x()
-        U_copy()
+        U_minus()
         U_y()
         qml.CZ(wires=[o_wires[0], o_wires[1]])
         qml.adjoint(U_y)()
-        qml.adjoint(U_copy)()
+        qml.adjoint(U_minus)()
         qml.adjoint(U_x)()
 
     # Grover operator used in QPE
@@ -106,34 +106,6 @@ def qbc_conv(x, y, k, num_t_wires=10):
 
         return qml.probs(wires=t_wires)
 
-    # Helper fct for debugging U_x oracle
-    @qml.qnode(dev)
-    def U_x_vec(i):
-        qml.BasisEmbedding(i, wires=n_wires)
-        U_x()
-        return qml.probs(wires=o_wires[0])
-
-    def U_x_vec_val(i):
-        return np.argmax(U_x_vec(i))
-
-    def U_x_vec_full():
-        res = [U_x_vec_val(i) for i in range(2**num_n_wires)]
-        return res
-
-    # Helper fct for debugging U_y oracle
-    @qml.qnode(dev)
-    def U_y_vec(i):
-        qml.BasisEmbedding(i, wires=n_wires)
-        U_y()
-        return qml.probs(wires=o_wires[1])
-
-    def U_y_vec_val(i):
-        return np.argmax(U_y_vec(i))
-
-    def U_y_vec_full():
-        res = [U_y_vec_val(i) for i in range(2**num_n_wires)]
-        return res
-
     # return test_fct()
     probs = qbc()
     j = np.argmax(probs)
@@ -143,20 +115,27 @@ def qbc_conv(x, y, k, num_t_wires=10):
     return rho, f, theta, j, probs
 
 
-x = [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1]
-y = [0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1]
+# x = [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1]
+# y = [0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1]
 
-for k in range(len(x)):
-    rho, _, _, _, probs = qbc_conv(x, y, k, 9)
 
-    def convolution_analytic(x, y, k):
-        sum = 0
-        for i in range(len(x)):
-            sum += x[i] * y[(k - (i + 1) + len(x)) % len(y)]
-        return sum
+# def circular_conv(x, y):
+#     return np.fft.ifft(np.fft.fft(x) * np.fft.fft(y))
 
-    print(
-        "x * y = {analytic}, rho = {rho}".format(
-            analytic=convolution_analytic(x, y, k), rho=rho
-        )
-    )
+
+# for k in range(len(x)):
+#     rho, _, _, _, probs = qbc_conv(x, y, k, 6)
+
+#     def convolution_analytic(x, y, k):
+#         sum = 0
+#         for i in range(len(x)):
+#             sum += x[i] * y[(k + 1 - (i + 1) + len(x)) % len(y)]
+#         return sum
+
+#     print(
+#         "x * y = {analytic}, rho = {rho}".format(
+#             analytic=convolution_analytic(x, y, k), rho=rho
+#         )
+#     )
+
+# print("circular_conv(x, y) =", circular_conv(x, y))

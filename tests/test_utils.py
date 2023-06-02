@@ -5,7 +5,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from addition import *
 from addition_two_wires import *
 from qbc import *
+from qbc_extended_space import *
 from qbc_hamming_dist import *
+from qbc_conv import *
 from scipy.spatial.distance import hamming
 import math
 import pytest
@@ -50,6 +52,30 @@ def test_qbc_algorithm(n, num_t_wires):
     y = np.random.randint(0, 2, size=(2**n))
     rho, _, _, _, _ = qbc_algorithm(x, y, num_t_wires)
     assert math.isclose(rho, np.inner(x, y), rel_tol=1e-1)
+
+
+@pytest.mark.parametrize(
+    "n, num_t_wires",
+    [(n, num_t_wires) for n in range(2, 4) for num_t_wires in range(10, 11)],
+)
+def test_qbc_algorithm_extended_space(n, num_t_wires):
+    x = np.random.randint(0, 2, size=(2**n))
+    y = np.random.randint(0, 2, size=(2**n))
+    rho, _, _, _, _ = qbc_conv_algorithm_extended_space(x, y, num_t_wires)
+    assert math.isclose(rho, np.inner(x, y), rel_tol=1e-1)
+
+
+@pytest.mark.parametrize(
+    "n, num_t_wires",
+    [(n, num_t_wires) for n in range(2, 4) for num_t_wires in range(9, 10)],
+)
+def test_qbc_conv(n, num_t_wires):
+    x = np.random.randint(0, 2, size=(2**n))
+    y = np.random.randint(0, 2, size=(2**n))
+    analytical_result = np.real(np.fft.ifft(np.fft.fft(x) * np.fft.fft(y)))
+    for i in range(len(x)):
+        rho, _, _, _, _ = qbc_conv(x, y, i, num_t_wires)
+        assert math.isclose(rho, analytical_result[i], rel_tol=1e-1)
 
 
 @pytest.mark.parametrize(
