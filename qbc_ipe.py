@@ -4,7 +4,7 @@ import scipy.linalg as la
 import matplotlib.pyplot as plt
 
 
-def qbc_ipe_algorithm(x, y, num_t_wires=10):
+def qbc_ipe_algorithm(x, y, num_t_wires=10, num_shots=1):
     assert len(x) == len(y)
     num_n_wires = int(np.ceil(np.log2(len(x))))
     num_tot_wires = num_t_wires + num_n_wires + 1
@@ -14,11 +14,13 @@ def qbc_ipe_algorithm(x, y, num_t_wires=10):
     a_wires = range(num_t_wires + num_n_wires, num_t_wires + num_n_wires + 1)
     tot_wires = range(0, num_t_wires + num_n_wires + 1)
 
-    dev = qml.device("default.qubit", wires=tot_wires, shots=10000)
+    dev = qml.device("default.qubit", wires=tot_wires, shots=num_shots)
 
     A_x = np.zeros((2**num_n_wires, 2**num_n_wires))
-    A_x[:, 0] = x
+    A_x[:, 0] = np.array(x)
     Q_x, _ = la.qr(A_x, mode="full")
+    for i in range(2**num_n_wires):
+        Q_x[i] /= la.norm(Q_x[i])
 
     u_x = Q_x.T
     if np.sign(u_x[0, 0]) != np.sign(x[0]):
@@ -26,11 +28,14 @@ def qbc_ipe_algorithm(x, y, num_t_wires=10):
 
     # Oracle A encoding x data
     def U_x():
+        # comm_ctr += 1
         qml.QubitUnitary(u_x, wires=n_wires)
 
     A_y = np.zeros((2**num_n_wires, 2**num_n_wires))
-    A_y[:, 0] = y
+    A_y[:, 0] = np.array(y)
     Q_y, _ = la.qr(A_y, mode="full")
+    for i in range(2**num_n_wires):
+        Q_y[i] /= la.norm(Q_y[i])
 
     u_y = Q_y.T
     if np.sign(u_y[0, 0]) != np.sign(y[0]):
@@ -42,8 +47,10 @@ def qbc_ipe_algorithm(x, y, num_t_wires=10):
 
     x_minus_y = np.array(x) - np.array(y)
     A_x_minus_y = np.zeros((2**num_n_wires, 2**num_n_wires))
-    A_x_minus_y[:, 0] = x_minus_y
+    A_x_minus_y[:, 0] = np.array(x_minus_y) / la.norm(x_minus_y)
     Q_x_minus_y, _ = la.qr(A_x_minus_y, mode="full")
+    for i in range(2**num_n_wires):
+        Q_x_minus_y[i] /= la.norm(Q_x_minus_y[i])
     u_x_minus_y = Q_x_minus_y.T
     if np.sign(u_x_minus_y[0, 0]) != np.sign(x_minus_y[0]):
         u_x_minus_y *= -1

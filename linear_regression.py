@@ -32,11 +32,11 @@ if __name__ == "__main__":
     print("X_mp @ y = ", X_mp @ y)
 
     ax = sns.scatterplot(x=X[:, 1], y=y, color="black", alpha=0.8)
-    ax.set_xlabel("x")
+    ax.set_xlabel("$\mathbf{x}$")
     ax.set_ylabel("$f(\mathbf{x}, \mathbf{\lambda})$")
     ax.plot(X[:, 1], X @ lambda_exact, label="Exact", alpha=0.8)
     ax.plot(X[:, 1], X @ lambda_approx, label="IPE", alpha=0.8)
     ax.plot(X[:, 1], X @ lambda_numerics, label="Numerics", alpha=0.8)
     ax.legend()
 
-    plt.show()
+    plt.savefig("./plots/lin_reg_qbc_ipe_lambda_-1_2.png", dpi=300)
