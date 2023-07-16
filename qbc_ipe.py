@@ -55,14 +55,6 @@ def qbc_ipe_algorithm(x, y, num_t_wires=10, num_shots=1):
     if np.sign(u_x_minus_y[0, 0]) != np.sign(x_minus_y[0]):
         u_x_minus_y *= -1
 
-    # Oracle B encoding y data
-    def U_x_minus_y():
-        qml.QubitUnitary(u_x_minus_y, wires=n_wires)
-
-    def U_psi_good():
-        qml.PauliX(wires=a_wires)
-        U_x_minus_y()
-
     # Phase oracle used in Grover operator
     def A_operator(U_x, U_y):
         qml.Hadamard(wires=a_wires)
@@ -74,22 +66,12 @@ def qbc_ipe_algorithm(x, y, num_t_wires=10, num_shots=1):
 
     # Grover operator used in QPE
     def grover_operator():
-        qml.adjoint(U_psi_good)()
-        for i in n_wires:
-            qml.PauliX(wires=i)
-        qml.PauliX(wires=a_wires)
-        qml.ctrl(
-            qml.PauliZ,
-            control=n_wires,
-            control_values=np.ones(num_n_wires),
-        )(wires=a_wires)
-        for i in n_wires:
-            qml.PauliX(wires=i)
-        qml.PauliX(wires=a_wires)
-        U_psi_good()
+        # Reflection about "good" state
+        qml.PauliZ(wires=a_wires)
 
         A_operator(U_x, U_y)
 
+        # Reflection about |0> state
         for i in n_wires:
             qml.PauliX(wires=i)
         qml.PauliX(wires=a_wires)
@@ -106,7 +88,7 @@ def qbc_ipe_algorithm(x, y, num_t_wires=10, num_shots=1):
 
     # QBC circuit
     @qml.qnode(dev, interface=None)
-    def qbc(U_x, U_y):
+    def qbc_ipe(U_x, U_y):
         A_operator(U_x, U_y)
 
         for t in t_wires:
@@ -120,7 +102,7 @@ def qbc_ipe_algorithm(x, y, num_t_wires=10, num_shots=1):
 
         return qml.probs(wires=t_wires), qml.counts(wires=t_wires)
 
-    probs, counts = qbc(U_x, U_y)
+    probs, counts = qbc_ipe(U_x, U_y)
     j = np.argmax(probs)
     theta = 2 * np.pi * j / 2**num_t_wires
     f = np.sin(theta / 2) ** 2
