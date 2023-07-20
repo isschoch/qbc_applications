@@ -20,11 +20,10 @@ def qbc_ipe_algorithm(x, y, num_t_wires=10, num_shots=1):
     A_x[:, 0] = np.array(x)
     Q_x, _ = la.qr(A_x, mode="full")
     for i in range(2**num_n_wires):
-        Q_x[i] /= la.norm(Q_x[i])
+        Q_x[:, i] /= la.norm(Q_x[:, i])
 
     u_x = Q_x.T
-    if np.sign(u_x[0, 0]) != np.sign(x[0]):
-        u_x *= -1
+    u_x *= np.sign(u_x[0, 0]) * np.sign(x[0])
 
     # Oracle A encoding x data
     def U_x():
@@ -35,25 +34,14 @@ def qbc_ipe_algorithm(x, y, num_t_wires=10, num_shots=1):
     A_y[:, 0] = np.array(y)
     Q_y, _ = la.qr(A_y, mode="full")
     for i in range(2**num_n_wires):
-        Q_y[i] /= la.norm(Q_y[i])
+        Q_y[:, i] /= la.norm(Q_y[:, i])
 
     u_y = Q_y.T
-    if np.sign(u_y[0, 0]) != np.sign(y[0]):
-        u_y *= -1
+    u_y *= np.sign(u_y[0, 0]) * np.sign(y[0])
 
     # Oracle B encoding y data
     def U_y():
         qml.QubitUnitary(u_y, wires=n_wires)
-
-    x_minus_y = np.array(x) - np.array(y)
-    A_x_minus_y = np.zeros((2**num_n_wires, 2**num_n_wires))
-    A_x_minus_y[:, 0] = np.array(x_minus_y) / la.norm(x_minus_y)
-    Q_x_minus_y, _ = la.qr(A_x_minus_y, mode="full")
-    for i in range(2**num_n_wires):
-        Q_x_minus_y[i] /= la.norm(Q_x_minus_y[i])
-    u_x_minus_y = Q_x_minus_y.T
-    if np.sign(u_x_minus_y[0, 0]) != np.sign(x_minus_y[0]):
-        u_x_minus_y *= -1
 
     # Phase oracle used in Grover operator
     def A_operator(U_x, U_y):
