@@ -15,7 +15,7 @@ key = jax.random.PRNGKey(0)
 
 
 @partial(jax.custom_jvp, nondiff_argnums=(2, 3))
-def qbc_ipe_algorithm(x, y, num_t_wires=11, num_shots=1):
+def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=1):
     assert len(x) == len(y)
     num_n_wires = int(jnp.ceil(jnp.log2(len(x))))
     num_tot_wires = num_t_wires + num_n_wires + 1
@@ -49,7 +49,7 @@ def qbc_ipe_algorithm(x, y, num_t_wires=11, num_shots=1):
 
     Q_y, _ = jnp.linalg.qr(A_y, mode="full")
     for i in range(2**num_n_wires):
-        Q_y.at[:, i].set(jnp.linalg.norm(Q_y[:, i]))
+        Q_y.at[:, i].set(Q_y[:, i] / jnp.linalg.norm(Q_y[:, i]))
 
     u_y = Q_y.T
     u_y *= jnp.sign(u_y[0, 0]) * jnp.sign(y[0])
@@ -168,8 +168,8 @@ def predict(W, b, inputs):
     res = []
     for x in inputs:
         print("x = ", x)
-        # z = qbc_ipe_algorithm(W, x) + b
-        z = jnp.dot(W, x) + b
+        z = qbc_ipe_algorithm(W, x) + b
+        # z = jnp.dot(W, x) + b
         f_z = sigmoid(z)
         res.append(f_z)
     return jnp.array(res)
