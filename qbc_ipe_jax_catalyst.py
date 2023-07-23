@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
-from pennylane_catalyst import qjit, lightning
+import pennylane as qml
+from catalyst import qjit
 
 
 def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
@@ -11,7 +12,7 @@ def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
     n_wires = range(num_t_wires, num_t_wires + num_n_wires)
     a_wires = range(num_t_wires + num_n_wires, num_t_wires + num_n_wires + 1)
     tot_wires = range(0, num_tot_wires)
-    dev = lightning.qubit(wires=tot_wires, shots=num_shots)
+    dev = qml.device("lightning.qubit" ,wires=tot_wires, shots=num_shots)
     A_x = jnp.zeros((2**num_n_wires, 2**num_n_wires))
     A_x[:, 0] = jnp.array(x)
     Q_x, _ = jnp.linalg.qr(A_x, mode="full")
@@ -47,10 +48,6 @@ def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
     def ctrl_grover_operator(control):
         """Controlled Grover operator using only gates supported by lightning.qubit"""
         # Reflection about "good" state
-        qml.QubitUnitary(
-            -jnp.identity(2 ** (num_n_wires + 1)),
-            wires=range(num_t_wires, num_tot_wires),
-        )
         qml.CNOT(wires=[control, a_wires[0]])
         qml.PauliZ(wires=a_wires)
         qml.CNOT(wires=[control, a_wires[0]])
@@ -104,3 +101,12 @@ def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
     )
 
     return rho
+
+
+x = jnp.array([0.5, -1.0])
+y = jnp.array([1.0, -1.75])
+
+x /= jnp.linalg.norm(x)
+y /= jnp.linalg.norm(y)
+result = qbc_ipe_algorithm(x, y, num_t_wires=6, num_shots=1)
+print("x =", x, "y =", y, "result =", result, "result_exact =", jnp.inner(x, y))
