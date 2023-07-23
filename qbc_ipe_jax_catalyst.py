@@ -34,46 +34,6 @@ def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
     u_y = Q_y.T
     u_y *= jnp.sign(u_y[0, 0]) * jnp.sign(y[0])
 
-    # Oracle B encoding y data
-    def U_y():
-        qml.QubitUnitary(u_y, wires=n_wires)
-
-    def A_operator(U_x, U_y):
-        qml.Hadamard(wires=a_wires)
-        qml.ctrl(U_x, control=a_wires, control_values=[0])()
-        qml.PauliX(wires=a_wires)
-        qml.ctrl(U_y, control=a_wires, control_values=[0])()
-        qml.PauliX(wires=a_wires)
-        qml.Hadamard(wires=a_wires)
-
-    def ctrl_grover_operator(control):
-        """Controlled Grover operator using only gates supported by lightning.qubit"""
-        # Reflection about "good" state
-        qml.CNOT(wires=[control, a_wires[0]])
-        qml.PauliZ(wires=a_wires)
-        qml.CNOT(wires=[control, a_wires[0]])
-
-        A_operator(U_x, U_y)
-
-        # Reflection about |0> state
-        for i in n_wires:
-            qml.PauliX(wires=i)
-        qml.PauliX(wires=a_wires)
-        qml.CNOT(wires=[control, a_wires[0]])
-        qml.Hadamard(wires=a_wires)
-        qml.ctrl(
-            qml.PauliX,
-            control=n_wires,
-            control_values=jnp.ones(num_n_wires),
-        )(wires=a_wires)
-        qml.Hadamard(wires=a_wires)
-        qml.CNOT(wires=[control, a_wires[0]])
-        for i in n_wires:
-            qml.PauliX(wires=i)
-        qml.PauliX(wires=a_wires)
-
-        qml.adjoint(A_operator)(U_x, U_y)
-
     # QBC circuit
     @qml.qnode(dev, interface="jax")
     @qjit
@@ -88,7 +48,43 @@ def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
         def U_y():
             qml.QubitUnitary(u_y, wires=n_wires)
 
-        A_operator(U_x, U_y)
+        def A_operator():
+            qml.Hadamard(wires=a_wires)
+            qml.ctrl(U_x, control=a_wires, control_values=[0])()
+            qml.PauliX(wires=a_wires)
+            qml.ctrl(U_y, control=a_wires, control_values=[0])()
+            qml.PauliX(wires=a_wires)
+            qml.Hadamard(wires=a_wires)
+
+        def ctrl_grover_operator(control):
+            """Controlled Grover operator using only gates supported by lightning.qubit"""
+            # Reflection about "good" state
+            qml.CNOT(wires=[control, a_wires[0]])
+            qml.PauliZ(wires=a_wires)
+            qml.CNOT(wires=[control, a_wires[0]])
+
+            A_operator()
+
+            # Reflection about |0> state
+            for i in n_wires:
+                qml.PauliX(wires=i)
+            qml.PauliX(wires=a_wires)
+            qml.CNOT(wires=[control, a_wires[0]])
+            qml.Hadamard(wires=a_wires)
+            qml.ctrl(
+                qml.PauliX,
+                control=n_wires,
+                control_values=jnp.ones(num_n_wires),
+            )(wires=a_wires)
+            qml.Hadamard(wires=a_wires)
+            qml.CNOT(wires=[control, a_wires[0]])
+            for i in n_wires:
+                qml.PauliX(wires=i)
+            qml.PauliX(wires=a_wires)
+
+            qml.adjoint(A_operator)()
+
+        A_operator()
 
         for t in t_wires:
             qml.Hadamard(wires=t)
