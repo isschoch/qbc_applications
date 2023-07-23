@@ -12,12 +12,15 @@ def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
     n_wires = range(num_t_wires, num_t_wires + num_n_wires)
     a_wires = range(num_t_wires + num_n_wires, num_t_wires + num_n_wires + 1)
     tot_wires = range(0, num_tot_wires)
-    dev = qml.device("lightning.qubit" ,wires=tot_wires, shots=num_shots)
-    A_x = jnp.zeros((2**num_n_wires, 2**num_n_wires))
-    A_x[:, 0] = jnp.array(x)
+    dev = qml.device("lightning.qubit", wires=tot_wires, shots=num_shots)
+    tmp = jnp.zeros((2**num_n_wires, 2**num_n_wires - 1))
+    A_x = jnp.concatenate(
+        (jnp.pad(x, pad_width=(0, 2**num_n_wires - len(x))).reshape(-1, 1), tmp),
+        axis=1,
+    )
     Q_x, _ = jnp.linalg.qr(A_x, mode="full")
     for i in range(2**num_n_wires):
-        Q_x[:, i] /= jnp.linalg.norm(Q_x[:, i])
+        Q_x.at[:, i].set(Q_x[:, i] / jnp.linalg.norm(Q_x[:, i]))
     u_x = Q_x.T
     u_x *= jnp.sign(u_x[0, 0]) * jnp.sign(x[0])
 
@@ -25,11 +28,13 @@ def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
     def U_x():
         qml.QubitUnitary(u_x, wires=n_wires)
 
-    A_y = jnp.zeros((2**num_n_wires, 2**num_n_wires))
-    A_y[:, 0] = jnp.array(y)
+    A_y = jnp.concatenate(
+        (jnp.pad(y, pad_width=(0, 2**num_n_wires - len(y))).reshape(-1, 1), tmp),
+        axis=1,
+    )
     Q_y, _ = jnp.linalg.qr(A_y, mode="full")
     for i in range(2**num_n_wires):
-        Q_y[:, i] /= jnp.linalg.norm(Q_y[:, i])
+        Q_y.at[:, i].set(Q_y[:, i] / jnp.linalg.norm(Q_y[:, i]))
     u_y = Q_y.T
     u_y *= jnp.sign(u_y[0, 0]) * jnp.sign(y[0])
 
