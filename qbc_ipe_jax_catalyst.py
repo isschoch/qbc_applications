@@ -24,10 +24,6 @@ def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
     u_x = Q_x.T
     u_x *= jnp.sign(u_x[0, 0]) * jnp.sign(x[0])
 
-    # Oracle A encoding x data
-    def U_x():
-        qml.QubitUnitary(u_x, wires=n_wires)
-
     A_y = jnp.concatenate(
         (jnp.pad(y, pad_width=(0, 2**num_n_wires - len(y))).reshape(-1, 1), tmp),
         axis=1,
@@ -81,7 +77,17 @@ def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
     # QBC circuit
     @qml.qnode(dev, interface="jax")
     @qjit
-    def qbc_ipe(U_x, U_y):
+    def qbc_ipe():
+        # Oracle A encoding x data
+        @jax.jit
+        def U_x():
+            qml.QubitUnitary(u_x, wires=n_wires)
+
+        # Oracle B encoding y data
+        @jax.jit
+        def U_y():
+            qml.QubitUnitary(u_y, wires=n_wires)
+
         A_operator(U_x, U_y)
 
         for t in t_wires:
@@ -95,7 +101,7 @@ def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
 
         return qml.probs(wires=t_wires)
 
-    probs = qbc_ipe(U_x, U_y)
+    probs = qbc_ipe()
     j = jnp.argmax(probs)
 
     print("theta =", 2 * j / (2**num_t_wires))
