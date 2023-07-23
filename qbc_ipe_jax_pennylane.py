@@ -73,7 +73,10 @@ def qbc_ipe_jax(x, y, num_t_wires=8, num_shots=None):
     tmp = jnp.zeros((2**num_n_wires, 2**num_n_wires - 1))
 
     x = x.at[0].set(jnp.finfo(jnp.float32).eps + x[0])
-    A_x = jnp.concatenate((x.reshape(-1, 1), tmp), axis=1)
+    A_x = jnp.concatenate(
+        (jnp.pad(x, pad_width=(0, 2**num_n_wires - len(x))).reshape(-1, 1), tmp),
+        axis=1,
+    )
 
     Q_x, _ = jnp.linalg.qr(A_x, mode="full")
     for i in range(2**num_n_wires):
@@ -83,12 +86,14 @@ def qbc_ipe_jax(x, y, num_t_wires=8, num_shots=None):
     u_x *= jnp.sign(u_x[0, 0]) * jnp.sign(x[0])
 
     # Oracle A encoding x data
-
     def U_x():
         qml.QubitUnitary(u_x, wires=n_wires)
 
     y = y.at[0].set(jnp.finfo(jnp.float32).eps + y[0])
-    A_y = jnp.concatenate((y.reshape(-1, 1), tmp), axis=1)
+    A_y = jnp.concatenate(
+        (jnp.pad(y, pad_width=(0, 2**num_n_wires - len(y))).reshape(-1, 1), tmp),
+        axis=1,
+    )
 
     Q_y, _ = jnp.linalg.qr(A_y, mode="full")
     for i in range(2**num_n_wires):
@@ -98,7 +103,6 @@ def qbc_ipe_jax(x, y, num_t_wires=8, num_shots=None):
     u_y *= jnp.sign(u_y[0, 0]) * jnp.sign(y[0])
 
     # Oracle B encoding y data
-
     def U_y():
         qml.QubitUnitary(u_y, wires=n_wires)
 

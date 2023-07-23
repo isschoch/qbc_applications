@@ -17,6 +17,9 @@ targets = jnp.array([True, True, False, True])
 key, W_key, b_key = jax.random.split(key, 3)
 W = jnp.array([-1.6193685, 1.28386154, -1.13687517, -0.4885566])
 b = 0.21635686180382116
+
+W1 = jnp.array([-1.6193685, 1.28386154, -1.13687517, -0.4885566])
+b1 = 0.21635686180382116
 print("W = ", W)
 print("b = ", b)
 
@@ -26,11 +29,20 @@ def sigmoid(x):
 
 
 # @jax.jit
-def predict(W, b, inputs):
+def predict_ipe(W, b, inputs):
     res = []
     for x in inputs:
-        print("x = ", x)
-        z = qbc_ipe_fwd(W, x, 3) + b
+        z = qbc_ipe_fwd(W, x, 5) + b
+        # z = jnp.inner(W, x) + b
+        f_z = sigmoid(z)
+        res.append(f_z)
+    return jnp.array(res)
+
+
+def predict_inner(W, b, inputs):
+    res = []
+    for x in inputs:
+        z = qbc_ipe_fwd(W, x, 5) + b
         # z = jnp.inner(W, x) + b
         f_z = sigmoid(z)
         res.append(f_z)
@@ -38,16 +50,26 @@ def predict(W, b, inputs):
 
 
 def loss(W, b):
-    preds = predict(W, b, inputs)
+    preds = predict_inner(W, b, inputs)
+    preds = predict_ipe(W1, b1, preds.reshape(1, 4))
+    # print("preds = ", preds.shape)
     label_probs = preds * targets + (1 - preds) * (1 - targets)
     loss = -jnp.sum(jnp.log(label_probs))
     return loss
 
 
-b_grad = jax.grad(loss, argnums=1)(W, b)
-W_grad = jax.jacfwd(loss, argnums=0)(W, b)
-print("b_grad = ", b_grad)
-print("W_grad = ", W_grad)
+print("loss(W, b) = ", loss(W, b))
+lr = 0.1
+num_epochs = 10
+for epoch_idx in range(num_epochs):
+    print("epoch_idx = ", epoch_idx)
+    b_grad = jax.jacfwd(loss, argnums=1)(W, b)
+    W_grad = jax.jacfwd(loss, argnums=0)(W, b)
+    b = b - lr * b_grad
+    W = W - lr * W_grad
+print("b = ", b)
+print("W = ", W)
+print("loss(W, b) = ", loss(W, b))
 
 
 # W_grad =  [-2.10045795  2.51364099 -2.22189626 -0.26447761], b_grad =  -1.8412136122910145 t = 4

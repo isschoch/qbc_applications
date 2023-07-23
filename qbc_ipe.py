@@ -17,7 +17,7 @@ def qbc_ipe_algorithm(x, y, num_t_wires=10, num_shots=1):
     dev = qml.device("default.qubit", wires=tot_wires, shots=num_shots)
 
     A_x = np.zeros((2**num_n_wires, 2**num_n_wires))
-    A_x[:, 0] = np.array(x)
+    A_x[:, 0] = np.pad(np.array(x), pad_width=(0, 2**num_n_wires - len(x)))
     Q_x, _ = la.qr(A_x, mode="full")
     for i in range(2**num_n_wires):
         Q_x[:, i] /= la.norm(Q_x[:, i])
@@ -31,7 +31,7 @@ def qbc_ipe_algorithm(x, y, num_t_wires=10, num_shots=1):
         qml.QubitUnitary(u_x, wires=n_wires)
 
     A_y = np.zeros((2**num_n_wires, 2**num_n_wires))
-    A_y[:, 0] = np.array(y)
+    A_y[:, 0] = np.pad(np.array(y), pad_width=(0, 2**num_n_wires - len(y)))
     Q_y, _ = la.qr(A_y, mode="full")
     for i in range(2**num_n_wires):
         Q_y[:, i] /= la.norm(Q_y[:, i])

@@ -1,7 +1,6 @@
 import pennylane as qml
 from pennylane import numpy as np
 import scipy.linalg as la
-import matplotlib.pyplot as plt
 
 
 def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
@@ -14,7 +13,7 @@ def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
     tot_wires = range(0, num_tot_wires)
     dev = qml.device("lightning.qubit", wires=tot_wires, shots=num_shots)
     A_x = np.zeros((2**num_n_wires, 2**num_n_wires))
-    A_x[:, 0] = np.array(x)
+    A_x[:, 0] = np.pad(np.array(x), pad_width=(0, 2**num_n_wires - len(x)))
     Q_x, _ = la.qr(A_x, mode="full")
     for i in range(2**num_n_wires):
         Q_x[:, i] /= la.norm(Q_x[:, i])
@@ -26,7 +25,7 @@ def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
         qml.QubitUnitary(u_x, wires=n_wires)
 
     A_y = np.zeros((2**num_n_wires, 2**num_n_wires))
-    A_y[:, 0] = np.array(y)
+    A_y[:, 0] = np.pad(np.array(y), pad_width=(0, 2**num_n_wires - len(y)))
     Q_y, _ = la.qr(A_y, mode="full")
     for i in range(2**num_n_wires):
         Q_y[:, i] /= la.norm(Q_y[:, i])
@@ -104,7 +103,7 @@ def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
 
 if __name__ == "__main__":
     for i in range(10):
-        x = np.random.rand(2**3)
-        y = np.random.rand(2**3)
+        x = np.random.rand(3)
+        y = np.random.rand(3)
         result = qbc_ipe_algorithm(x, y, num_t_wires=9, num_shots=1)
         print("x =", x, "y =", y, "result =", result, "result_exact =", np.inner(x, y))
