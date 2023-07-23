@@ -35,8 +35,8 @@ def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
     u_y *= jnp.sign(u_y[0, 0]) * jnp.sign(y[0])
 
     # QBC circuit
-    @qml.qnode(dev, interface="jax")
     @qjit
+    @qml.qnode(dev, interface="jax")
     def qbc_ipe():
         # Oracle A encoding x data
         @jax.jit
