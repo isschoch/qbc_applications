@@ -7,9 +7,13 @@ import numpy as np
 jax.config.update("jax_enable_x64", True)
 key = jax.random.PRNGKey(0)
 
+num_n_wires = 4
+num_t_wires = 7
+num_shots = None
+
 
 @jax.custom_vjp
-def qbc_ipe_rev(x, y, num_t_wires=8, num_shots=None):
+def qbc_ipe_rev(x, y, num_t_wires, num_shots=None):
     result = qbc_ipe_jax(x, y, num_t_wires, num_shots)
     return result
 
@@ -28,10 +32,9 @@ def qbc_ipe_vjp_bwd(res, g):
     )  # None return value signifies non-differentiable argument
 
 
-def qbc_ipe_jax(x, y, num_t_wires=6, num_shots=None):
+def qbc_ipe_jax(x, y, num_t_wires=8, num_shots=None, num_n_wires=4):
     assert len(x) == len(y)
-    # num_n_wires = int(jnp.ceil(jnp.log2(len(x))))
-    num_n_wires = 2
+    num_n_wires = num_n_wires
     num_tot_wires = num_t_wires + num_n_wires + 1
 
     t_wires = range(0, num_t_wires)
@@ -138,22 +141,31 @@ class Test:
 
 qbc_ipe_rev.defvjp(qbc_ipe_vjp_fwd, qbc_ipe_vjp_bwd)
 
+partial_qbc_ipe_jax = partial(
+    qbc_ipe_jax, num_t_wires=num_t_wires, num_shots=num_shots, num_n_wires=num_n_wires
+)
 
-@partial(jax.custom_jvp)
+
+@jax.custom_jvp
 def qbc_ipe_fwd(x, y):
-    return qbc_ipe_jax(x, y)
+    result = partial_qbc_ipe_jax(x, y)
+    print("qbc_ipe_fwd =", result, "result_exact =", np.inner(x, y))
+    # return partial_qbc_ipe_jax(x, y)
+    return result
 
 
-jitted_qbc_ipe_fwd = jax.jit(qbc_ipe_jax)
+jitted_qbc_ipe_fwd = jax.jit(partial_qbc_ipe_jax)
 
 
 @qbc_ipe_fwd.defjvp
 def qbc_ipe_jvp(primals, tangents):
     primal0, primal1 = primals
     vector0_dot, vector1_dot = tangents
-    primal_out = qbc_ipe_fwd(primal0, primal1)
+    primal_out = partial_qbc_ipe_jax(primal0, primal1)
 
-    tangent_out = qbc_ipe_fwd(primal1, vector0_dot) + qbc_ipe_fwd(primal0, vector1_dot)
+    tangent_out = partial_qbc_ipe_jax(primal1, vector0_dot) + partial_qbc_ipe_jax(
+        primal0, vector1_dot
+    )
 
     # print(
     #     "primal_out = ", primal_out, "primal_out_exact = ", jnp.inner(primal0, primal1)
@@ -192,9 +204,6 @@ class QBCIPEJax:
         self._num_t_wires = num_t_wires
         self._num_shots = num_shots
         self._jit_me = jit_me
-        self._func = Test(num_t_wires=self._num_t_wires, num_shots=self._num_shots)
-
-    # @jax.custom_vjp
 
     def __call__(self, x, y):
         return jit_qbc_ipe_fwd(x, y) if self._jit_me is True else qbc_ipe_fwd(x, y)
