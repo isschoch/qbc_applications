@@ -58,13 +58,12 @@ def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):
             qml.PauliX(wires=i)
         qml.PauliX(wires=a_wires)
         qml.CNOT(wires=[control, a_wires[0]])
+
+        # Controlled Z
         qml.Hadamard(wires=a_wires)
-        qml.ctrl(
-            qml.PauliX,
-            control=n_wires,
-            control_values=np.ones(num_n_wires),
-        )(wires=a_wires)
+        qml.MultiControlledX(wires=(*n_wires, *a_wires))
         qml.Hadamard(wires=a_wires)
+
         qml.CNOT(wires=[control, a_wires[0]])
         for i in n_wires:
             qml.PauliX(wires=i)

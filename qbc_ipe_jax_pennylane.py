@@ -2,37 +2,10 @@ import pennylane as qml
 import jax.numpy as jnp
 import jax
 from functools import partial
+import numpy as np
 
 jax.config.update("jax_enable_x64", True)
 key = jax.random.PRNGKey(0)
-
-
-@partial(jax.custom_jvp, nondiff_argnums=(2, 3))
-def qbc_ipe_fwd(x, y, num_t_wires=8, num_shots=None):
-    result = qbc_ipe_jax(x, y, num_t_wires, num_shots)
-    return result
-
-
-@qbc_ipe_fwd.defjvp
-def qbc_ipe_jvp(num_t_wires, num_shots, primals, tangents):
-    primal0, primal1 = primals
-    vector0_dot, vector1_dot = tangents
-    primal_out = qbc_ipe_fwd(primal0, primal1)
-    tangent_out_1 = qbc_ipe_fwd(primal1, vector0_dot)
-    tangent_out_2 = qbc_ipe_fwd(primal0, vector1_dot)
-
-    tangent_out = tangent_out_1 + tangent_out_2
-
-    # print(
-    #     "primal_out = ", primal_out, "primal_out_exact = ", jnp.inner(primal0, primal1)
-    # )
-    # print(
-    #     "tangent_out = ",
-    #     tangent_out,
-    #     "tangent_out_exact = ",
-    #     jnp.inner(primal1, vector0_dot) + jnp.inner(primal0, vector1_dot),
-    # )
-    return primal_out, tangent_out
 
 
 @jax.custom_vjp
@@ -42,7 +15,7 @@ def qbc_ipe_rev(x, y, num_t_wires=8, num_shots=None):
 
 
 def qbc_ipe_vjp_fwd(x, y, num_t_wires, num_shots):
-    return qbc_ipe_jax(x, y, num_t_wires, num_shots), (y, x)
+    return qbc_ipe_rev(x, y, num_t_wires, num_shots), (y, x)
 
 
 def qbc_ipe_vjp_bwd(res, g):
@@ -55,12 +28,10 @@ def qbc_ipe_vjp_bwd(res, g):
     )  # None return value signifies non-differentiable argument
 
 
-qbc_ipe_rev.defvjp(qbc_ipe_vjp_fwd, qbc_ipe_vjp_bwd)
-
-
-def qbc_ipe_jax(x, y, num_t_wires=8, num_shots=None):
+def qbc_ipe_jax(x, y, num_t_wires=6, num_shots=None):
     assert len(x) == len(y)
-    num_n_wires = int(jnp.ceil(jnp.log2(len(x))))
+    # num_n_wires = int(jnp.ceil(jnp.log2(len(x))))
+    num_n_wires = 2
     num_tot_wires = num_t_wires + num_n_wires + 1
 
     t_wires = range(0, num_t_wires)
@@ -85,10 +56,6 @@ def qbc_ipe_jax(x, y, num_t_wires=8, num_shots=None):
     u_x = Q_x.T
     u_x *= jnp.sign(u_x[0, 0]) * jnp.sign(x[0])
 
-    # Oracle A encoding x data
-    def U_x():
-        qml.QubitUnitary(u_x, wires=n_wires)
-
     y = y.at[0].set(jnp.finfo(jnp.float32).eps + y[0])
     A_y = jnp.concatenate(
         (jnp.pad(y, pad_width=(0, 2**num_n_wires - len(y))).reshape(-1, 1), tmp),
@@ -102,58 +69,53 @@ def qbc_ipe_jax(x, y, num_t_wires=8, num_shots=None):
     u_y = Q_y.T
     u_y *= jnp.sign(u_y[0, 0]) * jnp.sign(y[0])
 
-    # Oracle B encoding y data
-    def U_y():
-        qml.QubitUnitary(u_y, wires=n_wires)
-
     # Phase oracle used in Grover operator
-    def A_operator(U_x, U_y):
+    def A_operator(u_x, u_y):
         qml.Hadamard(wires=a_wires)
-        qml.ctrl(U_x, control=a_wires, control_values=[0])()
+        qml.ControlledQubitUnitary(u_x, wires=n_wires, control_wires=a_wires[0])
         qml.PauliX(wires=a_wires)
-        qml.ctrl(U_y, control=a_wires, control_values=[0])()
+        qml.ControlledQubitUnitary(u_y, wires=n_wires, control_wires=a_wires[0])
         qml.PauliX(wires=a_wires)
         qml.Hadamard(wires=a_wires)
 
     # Grover operator used in QPE
-    def grover_operator():
+    def grover_operator(u_x, u_y):
         # Reflection about "good" state
         qml.PauliZ(wires=a_wires)
 
-        A_operator(U_x, U_y)
+        A_operator(u_x, u_y)
 
         # Reflection about |0> state
         for i in n_wires:
             qml.PauliX(wires=i)
         qml.PauliX(wires=a_wires)
-        qml.ctrl(
-            qml.PauliZ,
-            control=n_wires,
-            control_values=jnp.ones(num_n_wires),
-        )(wires=a_wires)
+        qml.Hadamard(wires=a_wires)
+        qml.MultiControlledX(wires=(*n_wires, *a_wires))
+        qml.Hadamard(wires=a_wires)
         for i in n_wires:
             qml.PauliX(wires=i)
         qml.PauliX(wires=a_wires)
 
-        qml.adjoint(A_operator)(U_x, U_y)
+        qml.adjoint(A_operator)(u_x, u_y)
 
     # QBC circuit
+    # @jax.jit
     @qml.qnode(dev, interface=None)
-    def qbc_ipe(U_x, U_y):
-        A_operator(U_x, U_y)
+    def qbc_ipe(u_x, u_y):
+        A_operator(u_x, u_y)
 
         for t in t_wires:
             qml.Hadamard(wires=t)
 
         for idx, t in enumerate(t_wires):
             for i in range(2 ** (num_t_wires - idx - 1)):
-                qml.ctrl(grover_operator, control=t)()
+                qml.ctrl(grover_operator, control=t)(u_x, u_y)
 
         qml.adjoint(qml.QFT(wires=t_wires))
 
         return qml.probs(wires=t_wires)
 
-    probs = qbc_ipe(U_x, U_y)
+    probs = qbc_ipe(u_x, u_y)
     j = jnp.argmax(probs)
 
     rho = (
@@ -161,5 +123,78 @@ def qbc_ipe_jax(x, y, num_t_wires=8, num_shots=None):
         * jnp.linalg.norm(x)
         * jnp.linalg.norm(y)
     )
-    # print("rho = ", rho, "rho_exact = ", jnp.inner(x, y))
+
     return rho
+
+
+class Test:
+    def __init__(self, num_t_wires=2, num_shots=None):
+        self._num_t_wires = num_t_wires
+        self._num_shots = num_shots
+        self._ipe_provider = partial(qbc_ipe_fwd, self._num_t_wires, self._num_shots)
+
+
+# test = Test(num_t_wires=2, num_shots=None)
+
+qbc_ipe_rev.defvjp(qbc_ipe_vjp_fwd, qbc_ipe_vjp_bwd)
+
+
+@partial(jax.custom_jvp)
+def qbc_ipe_fwd(x, y):
+    return qbc_ipe_jax(x, y)
+
+
+jitted_qbc_ipe_fwd = jax.jit(qbc_ipe_jax)
+
+
+@qbc_ipe_fwd.defjvp
+def qbc_ipe_jvp(primals, tangents):
+    primal0, primal1 = primals
+    vector0_dot, vector1_dot = tangents
+    primal_out = qbc_ipe_fwd(primal0, primal1)
+
+    tangent_out = qbc_ipe_fwd(primal1, vector0_dot) + qbc_ipe_fwd(primal0, vector1_dot)
+
+    # print(
+    #     "primal_out = ", primal_out, "primal_out_exact = ", jnp.inner(primal0, primal1)
+    # )
+    # print(
+    #     "tangent_out = ",
+    #     tangent_out,
+    #     "tangent_out_exact = ",
+    #     jnp.inner(primal1, vector0_dot) + jnp.inner(primal0, vector1_dot),
+    # )
+    return primal_out, tangent_out
+
+
+@jax.custom_jvp
+def jit_qbc_ipe_fwd(x, y):
+    return jitted_qbc_ipe_fwd(x, y)
+
+
+@jit_qbc_ipe_fwd.defjvp
+def jit_qbc_ipe_jvp(primals, tangents):
+    primal0, primal1 = primals
+    vector0_dot, vector1_dot = tangents
+    primal_out = jitted_qbc_ipe_fwd(primal0, primal1)
+    tangent_out_1 = jitted_qbc_ipe_fwd(primal1, vector0_dot)
+    tangent_out_2 = jitted_qbc_ipe_fwd(primal0, vector1_dot)
+
+    tangent_out = tangent_out_1 + tangent_out_2
+    return primal_out, tangent_out
+
+
+class QBCIPEJax:
+    def __init__(
+        self, num_n_wires=2, num_t_wires=2, num_shots=None, jit_me=True
+    ) -> None:
+        self._num_n_wires = num_n_wires
+        self._num_t_wires = num_t_wires
+        self._num_shots = num_shots
+        self._jit_me = jit_me
+        self._func = Test(num_t_wires=self._num_t_wires, num_shots=self._num_shots)
+
+    # @jax.custom_vjp
+
+    def __call__(self, x, y):
+        return jit_qbc_ipe_fwd(x, y) if self._jit_me is True else qbc_ipe_fwd(x, y)
