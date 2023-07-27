@@ -8,7 +8,7 @@ jax.config.update("jax_enable_x64", True)
 key = jax.random.PRNGKey(0)
 
 num_n_wires = 4
-num_t_wires = 7
+num_t_wires = 5
 num_shots = None
 
 
@@ -130,15 +130,6 @@ def qbc_ipe_jax(x, y, num_t_wires=8, num_shots=None, num_n_wires=4):
     return rho
 
 
-class Test:
-    def __init__(self, num_t_wires=2, num_shots=None):
-        self._num_t_wires = num_t_wires
-        self._num_shots = num_shots
-        self._ipe_provider = partial(qbc_ipe_fwd, self._num_t_wires, self._num_shots)
-
-
-# test = Test(num_t_wires=2, num_shots=None)
-
 qbc_ipe_rev.defvjp(qbc_ipe_vjp_fwd, qbc_ipe_vjp_bwd)
 
 partial_qbc_ipe_jax = partial(
@@ -148,10 +139,8 @@ partial_qbc_ipe_jax = partial(
 
 @jax.custom_jvp
 def qbc_ipe_fwd(x, y):
-    result = partial_qbc_ipe_jax(x, y)
-    print("qbc_ipe_fwd =", result, "result_exact =", np.inner(x, y))
-    # return partial_qbc_ipe_jax(x, y)
-    return result
+    # print("In qbc_ipefwd with x = ", x, ", y = ", y)
+    return partial_qbc_ipe_jax(x, y)
 
 
 jitted_qbc_ipe_fwd = jax.jit(partial_qbc_ipe_jax)
@@ -207,3 +196,25 @@ class QBCIPEJax:
 
     def __call__(self, x, y):
         return jit_qbc_ipe_fwd(x, y) if self._jit_me is True else qbc_ipe_fwd(x, y)
+
+    def matvec(self, A, x):
+        return jax.vmap(self.__call__, in_axes=(0, None))(A, x)
+
+    def matmul(self, A, B):
+        return jax.vmap(
+            self.matvec,
+            in_axes=(None, 1),
+            out_axes=1,
+        )(A, B)
+
+
+if __name__ == "__main__":
+    A = jnp.array(np.random.rand(4, 4) - 0.5)
+    B = jnp.array(np.random.rand(4, 4) - 0.5)
+    x = jnp.array(np.random.rand(4) - 0.5)
+
+    qbc_inner = QBCIPEJax(num_n_wires=2, num_t_wires=2, num_shots=None, jit_me=False)
+    print(qbc_inner.matmul(A, B))
+    print(jnp.matmul(A, B))
+    # print(qbc_inner.matvec(A, x))
+    # print(jnp.matmul(A, x))
