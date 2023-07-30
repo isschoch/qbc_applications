@@ -79,7 +79,6 @@ def qbc_ipe_jax(x, y, num_t_wires=8, num_shots=None, num_n_wires=4):
         qml.adjoint(A_operator)(u_x, u_y)
 
     # QBC circuit
-    # @jax.jit
     @qml.qnode(dev, interface=None)
     def qbc_ipe(u_x, u_y):
         A_operator(u_x, u_y)
@@ -107,8 +106,8 @@ def qbc_ipe_jax(x, y, num_t_wires=8, num_shots=None, num_n_wires=4):
     return rho
 
 
-num_n_wires = 4
-num_t_wires = 5
+num_n_wires = 2
+num_t_wires = 7
 num_shots = None
 partial_qbc_ipe_jax = partial(
     qbc_ipe_jax, num_t_wires=num_t_wires, num_shots=num_shots, num_n_wires=num_n_wires
@@ -144,7 +143,6 @@ def jit_qbc_ipe_vjp_fwd(x, y):
 
 def jit_qbc_ipe_vjp_bwd(res, g):
     y, x = res
-    print("in qbc_ipe_vjp_bwd")
     return (g * y, g * x)
 
 
@@ -153,8 +151,10 @@ jit_qbc_ipe_rev.defvjp(jit_qbc_ipe_vjp_fwd, jit_qbc_ipe_vjp_bwd)
 
 @jax.custom_jvp
 def qbc_ipe_fwd(x, y):
-    # print("In qbc_ipefwd with x = ", x, ", y = ", y)
-    return partial_qbc_ipe_jax(x, y)
+    # return partial_qbc_ipe_jax(x, y)
+    result = partial_qbc_ipe_jax(x, y)
+    print("qbc_ipe_fwd =", result, "result_exact =", jnp.inner(x, y))
+    return result
 
 
 @qbc_ipe_fwd.defjvp
@@ -162,15 +162,15 @@ def qbc_ipe_jvp(primals, tangents):
     primal0, primal1 = primals
     vector0_dot, vector1_dot = tangents
     primal_out = qbc_ipe_fwd(primal0, primal1)
-
     tangent_out = qbc_ipe_fwd(primal1, vector0_dot) + qbc_ipe_fwd(primal0, vector1_dot)
-    print("in qbc_ipe_jvp")
     return primal_out, tangent_out
 
 
 @jax.custom_jvp
 def jit_qbc_ipe_fwd(x, y):
-    return jitted_qbc_ipe_jax(x, y)
+    result = jitted_qbc_ipe_jax(x, y)
+    print("jit_qbc_ipe_fwd =", result, "result_exact =", jnp.inner(x, y))
+    return result
 
 
 @jit_qbc_ipe_fwd.defjvp
@@ -178,11 +178,9 @@ def jit_qbc_ipe_jvp(primals, tangents):
     primal0, primal1 = primals
     vector0_dot, vector1_dot = tangents
     primal_out = jit_qbc_ipe_fwd(primal0, primal1)
-    tangent_out_1 = jit_qbc_ipe_fwd(primal1, vector0_dot)
-    tangent_out_2 = jit_qbc_ipe_fwd(primal0, vector1_dot)
-
-    tangent_out = tangent_out_1 + tangent_out_2
-    print("in jit_qbc_ipe_jvp")
+    tangent_out = jit_qbc_ipe_fwd(primal1, vector0_dot) + jit_qbc_ipe_fwd(
+        primal0, vector1_dot
+    )
     return primal_out, tangent_out
 
 
