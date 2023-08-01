@@ -18,47 +18,27 @@ key, W_key, b_key = jax.random.split(key, 3)
 W = jnp.array([-1.6193685, 1.28386154, -1.13687517, -0.4885566])
 b = 0.21635686180382116
 
-W1 = jnp.array([-1.6193685, 1.28386154, -1.13687517, -0.4885566])
-b1 = 0.21635686180382116
-print("W = ", W)
-print("b = ", b)
-
 
 def sigmoid(x):
     return (jnp.tanh(x / 2.0) + 1.0) / 2.0
 
 
-qbc_inner = QBCIPEJax(num_n_wires=2, num_t_wires=2, num_shots=None, jit_me=False)
+qbc_inner = QBCIPEJax(jit_me=True, mode="fwd")
 
 
 # @jax.jit
 def predict_ipe(W, b, inputs):
-    res = []
-    for x in inputs:
-        # z = qbc_ipe_fwd(W, x, 2) + b
-        # z = jnp.inner(W, x) + b
-        # z = qbc_ipe_fwd(W, x) + b
-        # z = partial_qbc_ipe_jax(W, x) + b
-        z = qbc_inner(W, x) + b
-        f_z = sigmoid(z)
-        res.append(f_z)
+    res = sigmoid(qbc_inner.matvec(inputs, W.T) + b)
     return jnp.array(res)
 
 
 def predict_inner(W, b, inputs):
-    res = []
-    for x in inputs:
-        # z = qbc_ipe_fwd(W, x, 5) + b
-        z = jnp.inner(W, x) + b
-        f_z = sigmoid(z)
-        res.append(f_z)
+    res = sigmoid(jnp.matmul(inputs, W.T) + b)
     return jnp.array(res)
 
 
 def loss(W, b):
     preds = predict_ipe(W, b, inputs)
-    # preds = predict_ipe(W1, b1, preds.reshape(1, 4))
-    # print("preds = ", preds.shape)
     label_probs = preds * targets + (1 - preds) * (1 - targets)
     loss = -jnp.sum(jnp.log(label_probs))
     return loss
