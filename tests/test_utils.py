@@ -4,11 +4,11 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from addition import *
 from addition_two_wires import *
-from qbc import *
-from qbc_ipe import *
-from qbc_extended_space import *
-from qbc_hamming_dist import *
-from qbc_conv import *
+from qbc.qbc import *
+from ipe.qbc_ipe import *
+from ipe.qbc_extended_space import *
+from qbc.qbc_hamming_dist import *
+from qbc.qbc_conv import *
 from scipy.spatial.distance import hamming
 import math
 import pytest

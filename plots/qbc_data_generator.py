@@ -2,7 +2,7 @@ import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from qbc import *
+from qbc.qbc import *
 import math
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -16,7 +16,7 @@ num_t_wires_range = range(num_t_wires_min, num_t_wires_max)
 num_reps = 100
 t_wire_data = np.zeros((num_t_wire_vals, num_reps))
 
-for (t_wire_idx, num_t_wires) in enumerate(num_t_wires_range):
+for t_wire_idx, num_t_wires in enumerate(num_t_wires_range):
     for rep_idx in range(num_reps):
         x = np.random.randint(0, 2, size=(2**n))
         y = np.random.randint(0, 2, size=(2**n))

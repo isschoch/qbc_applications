@@ -30,6 +30,7 @@ def qbc_ipe_probs(x, y, num_t_wires=8, num_shots=1, num_n_wires=4):
     )
 
     j = jnp.argmax(probs) - closest_integer_idx
+    # j = jax.random.choice(key, probs, shape=(num_shots,)) - closest_integer_idx
 
     rho = -(
         (1.0 - 2.0 * jnp.sin(jnp.pi * j / (2**num_t_wires)) ** 2)
@@ -39,11 +40,10 @@ def qbc_ipe_probs(x, y, num_t_wires=8, num_shots=1, num_n_wires=4):
     return rho
 
 
-num_n_wires = 2
-num_t_wires = 8
+num_t_wires = 12
 num_shots = None
 partial_qbc_ipe_jax = partial(
-    qbc_ipe_probs, num_t_wires=num_t_wires, num_shots=num_shots, num_n_wires=num_n_wires
+    qbc_ipe_probs, num_t_wires=num_t_wires, num_shots=num_shots, num_n_wires=2
 )
 jitted_qbc_ipe_jax = jax.jit(partial_qbc_ipe_jax)
 

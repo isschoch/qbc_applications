@@ -1,8 +1,10 @@
 import sys
 import os
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from qbc_ipe import *
+dir_path = "/Users/isidorschoch/Programs/master_thesis/qbc_applications/"
+sys.path.append(dir_path)
+
+from ipe.qbc_ipe import *
 import math
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -52,4 +54,4 @@ for t_idx, num_t_wires in enumerate(num_t_wires_range):
     std.append(np.std(data[t_idx, :]))
 
 df = pd.DataFrame(data)
-df.to_csv("./data/qbc_ipe_data_violin.csv", header=None, index=None)
+df.to_csv("./qbc_ipe_data_violin.csv", header=None, index=None)

@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 import pennylane as qml
-from catalyst import qjit
+from catalyst import qjit, measure, cond, for_loop, while_loop
 
 
 def qbc_ipe_algorithm(x, y, num_t_wires=8, num_shots=None):

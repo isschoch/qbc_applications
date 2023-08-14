@@ -1,6 +1,6 @@
 import pennylane as qml
 from pennylane import numpy as np
-from qbc_ipe import qbc_ipe_algorithm
+from ipe.qbc_ipe import qbc_ipe_algorithm
 import scipy.linalg as la
 import seaborn as sns
 import matplotlib.pyplot as plt

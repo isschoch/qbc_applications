@@ -1,6 +1,6 @@
 import jax
 import jax.numpy as jnp
-from qbc_ipe_jax_pennylane import *
+from ipe.qbc_ipe_jax_pennylane import *
 
 # Build a toy dataset.
 inputs = jnp.array(
