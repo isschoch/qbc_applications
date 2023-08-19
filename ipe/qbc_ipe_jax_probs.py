@@ -9,7 +9,9 @@ jax.config.update("jax_enable_x64", True)
 key = jax.random.PRNGKey(0)
 
 
-def qbc_ipe_probs(x, y, num_t_wires=8, num_shots=1, num_n_wires=4):
+def qbc_ipe_probs(
+    x, y, num_t_wires=8, num_shots=1, num_n_wires=4, key=jax.random.PRNGKey(0)
+):
     assert len(x) == len(y)
 
     x = x.at[0].set(jnp.finfo(jnp.float32).eps + x[0])
@@ -29,8 +31,9 @@ def qbc_ipe_probs(x, y, num_t_wires=8, num_shots=1, num_n_wires=4):
         M**2 * jnp.sin((delta - range_vals / M) * jnp.pi) ** 2
     )
 
-    j = jnp.argmax(probs) - closest_integer_idx
-    # j = jax.random.choice(key, probs, shape=(num_shots,)) - closest_integer_idx
+    # j = jnp.argmax(probs) - closest_integer_idx
+    key, subkey = jax.random.split(key)
+    j = jax.random.choice(subkey, a=range_vals, p=probs) - closest_integer_idx
 
     rho = -(
         (1.0 - 2.0 * jnp.sin(jnp.pi * j / (2**num_t_wires)) ** 2)
@@ -144,12 +147,13 @@ class QBCIPEJax:
 
 
 if __name__ == "__main__":
-    A = jnp.array(np.random.rand(4, 4) - 0.5)
-    B = jnp.array(np.random.rand(4, 4) - 0.5)
-    x = jnp.array(np.random.rand(4) - 0.5)
-    y = jnp.array(np.random.rand(4) - 0.5)
-
+    # A = jnp.array(np.random.rand(4, 4) - 0.5)
+    # B = jnp.array(np.random.rand(4, 4) - 0.5)
+    # x = jnp.array(np.random.rand(4) - 0.5)
+    # y = jnp.array(np.random.rand(4) - 0.5)
+    x = jnp.array([-0.5, 1.0, 0.25, 1.3])
+    y = jnp.array([0.5, 1.55, 0.25, 1.3])
     qbc_inner = QBCIPEJax(jit_me=False)
     print(qbc_inner(x, y), jnp.inner(x, y))
-    print(qbc_inner.matmul(A, B))
-    print(jnp.matmul(A, B))
+    # print(qbc_inner.matmul(A, B))
+    # print(jnp.matmul(A, B))

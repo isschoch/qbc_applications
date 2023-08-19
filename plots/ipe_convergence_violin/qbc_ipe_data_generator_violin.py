@@ -54,4 +54,4 @@ for t_idx, num_t_wires in enumerate(num_t_wires_range):
     std.append(np.std(data[t_idx, :]))
 
 df = pd.DataFrame(data)
-df.to_csv("./qbc_ipe_data_violin.csv", header=None, index=None)
+df.to_csv("./data.csv", header=None, index=None)
