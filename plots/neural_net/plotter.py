@@ -1,10 +1,40 @@
+import sys
+import os
+
+# Add the parent directory to the system path to enable absolute imports
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
 
-df = pd.read_csv("data_q_rev.csv")
-print(df)
+# Define directories for saving plots
+fit_plots_dir = os.path.join(os.path.dirname(__file__), "fit_plots")
+loss_plots_dir = os.path.join(os.path.dirname(__file__), "loss_plots")
+
+# Create directories if they do not exist
+os.makedirs(fit_plots_dir, exist_ok=True)
+os.makedirs(loss_plots_dir, exist_ok=True)
+
+# Define filenames
+input_filename = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "data_q_fwd_stat_12t.csv")
+)  # Use absolute path for input file
+base_filename = os.path.splitext(os.path.basename(input_filename))[
+    0
+]  # Get the base name without extension
+output_fit_filename = os.path.join(
+    fit_plots_dir, f"{base_filename}_fit.png"
+)  # Configure output filename for fit
+output_loss_filename = os.path.join(
+    loss_plots_dir, f"{base_filename}_loss.png"
+)  # Configure output filename for loss
+
+df = pd.read_csv(input_filename)
+# print(df)
 data = df.to_numpy()
 epochs_list = np.array(data[2:, 0], dtype=int)
 num_epochs = epochs_list[-1] + 1
@@ -15,6 +45,8 @@ train_loss_list_epochs = data[2:, 1]
 x_data = data[0, 3:].flatten()
 y_data = data[1, 3:].flatten()
 
+for idx in [0, 50, 100, 150, 200]:
+    print("test_loss_list_epochs[", idx, "] =", test_loss_list_epochs[idx])
 
 # set global font size
 plt.rcParams["font.size"] = 22
@@ -52,8 +84,8 @@ sns.lineplot(
     color="red",
 )
 plt.tight_layout()
-plt.show()
-# plt.savefig("neural_net_fit_q_rev.png", dpi=400)
+# plt.show()
+plt.savefig(output_fit_filename, dpi=400)
 
 # set figure size
 plt.figure(figsize=(8, 6))
@@ -93,13 +125,10 @@ plt.legend(title="Cost Type", loc="upper right")
 
 # adjust spacing
 plt.tight_layout()
-
+plt.ylim(-0.018, 1.218)
 # show plot
-plt.show()
-# plt.savefig("neural_net_loss_q_rev.png", dpi=400)
-
-import plotly.express as px
-import plotly.graph_objects as go
+# plt.show()
+plt.savefig(output_loss_filename, dpi=400)
 
 epoch_period = num_epochs // (len(epochs_list) - 1)
 
@@ -191,4 +220,4 @@ fig.update_layout(
 fig.update_xaxes()
 
 # show the figure
-fig.show()
+# fig.show()
