@@ -10,6 +10,13 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
+from matplotlib.ticker import FuncFormatter  # Import FuncFormatter
+
+
+# Set y-axis label format to avoid exponential notation
+def format_func(value, tick_number):
+    return f"{value:.2f}"  # Format to two decimal places
+
 
 # Define directories for saving plots
 fit_plots_dir = os.path.join(os.path.dirname(__file__), "fit_plots")
@@ -21,13 +28,13 @@ os.makedirs(loss_plots_dir, exist_ok=True)
 
 # Define filenames
 input_filename = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "data_q_fwd_stat_12t.csv")
+    os.path.join(os.path.dirname(__file__), "data_q_fwd_stat_6t.csv")
 )  # Use absolute path for input file
 base_filename = os.path.splitext(os.path.basename(input_filename))[
     0
 ]  # Get the base name without extension
 output_fit_filename = os.path.join(
-    fit_plots_dir, f"{base_filename}_fit.png"
+    fit_plots_dir, f"{base_filename}_fit_muted.png"
 )  # New output filename for muted fit plot
 output_loss_filename = os.path.join(
     loss_plots_dir, f"{base_filename}_loss.png"
@@ -61,105 +68,138 @@ plt.rcParams["font.size"] = 22
 # Use a muted color palette
 palette = sns.color_palette("muted", 2)  # Use muted colors for better aesthetics
 
-# set figure size
-plt.figure(figsize=(8, 6))
-ax = sns.scatterplot(
+# Create separate figures for fit and loss plots
+fig_fit, ax_fit = plt.subplots(figsize=(8, 6))
+fig_loss, ax_loss = plt.subplots(figsize=(8, 6))
+
+# Fit plot
+sns.scatterplot(
     x=x_data,
     y=y_data,
     marker="o",
-    s=30,  # Change markersize to 's' for size
+    s=30,
     linewidth=0,
     alpha=0.4,
     color="gray",
-    # label="Training Data",
+    ax=ax_fit,
 )
 
 # Add custom legend entry
-plt.plot([], [], "o", color="gray", alpha=0.5, markersize=10, label="Training Data")
+ax_fit.plot([], [], "o", color="gray", alpha=0.5, markersize=10, label="Training Data")
 
 # Add grid lines for better readability
-ax.grid(True, linestyle=":", linewidth=3, alpha=0.3)
+ax_fit.grid(True, linestyle=":", linewidth=3, alpha=0.3)
 x_ticks = [0, 0.5 * np.pi, np.pi, 1.5 * np.pi]
-ax.set_xticks(x_ticks)
-ax.set_xticklabels(["0", r"$\frac{\pi}{2}$", r"$\pi$", r"$\frac{3\pi}{2}$"])
-ax.set_xlabel("x", fontsize=20)  # Increased font size for x-axis
-ax.set_ylabel(
-    "f(x)",
-    fontsize=20,
-    rotation=0,
-    labelpad=25,  # Increased font size for y-axis and rotated by 90 degrees, added padding
-)
+ax_fit.set_xticks(x_ticks)
+ax_fit.set_xticklabels(["0", r"$\pi/2$", r"$\pi$", r"$3\pi/2$"])
+ax_fit.set_ylabel(r"$f(x)$", fontsize=20, rotation=90, labelpad=29)
 
 # Plot the smoothed lines
 sns.lineplot(
     x=x_data_sorted,
     y=y_preds_initial_sorted,
     label="Initial NN",
-    # linestyle="dotted",
     linewidth=6,
     alpha=0.8,
-    color=palette[0],  # Use muted color palette
+    color=palette[0],
+    ax=ax_fit,
 )
 
 sns.lineplot(
     x=x_data_sorted,
     y=y_preds_trained_sorted,
     label="Trained NN",
-    # linestyle="dashed",
     linewidth=6,
-    color=palette[1],  # Use muted color palette
+    color=palette[1],
     alpha=0.8,
+    ax=ax_fit,
 )
 
-plt.ylim(-3.3, 1.0)
-plt.xlim(min(x_ticks), max(x_ticks))
-# Improve legend appearance
-plt.legend(fontsize="18", loc="lower right", frameon=True)
+ax_fit.set_ylim(-3.3, 1.0)
+ax_fit.set_xlim(min(x_ticks), max(x_ticks))  # Set fixed x limits for fit plot
+ax_fit.legend(fontsize="18", loc="lower right", frameon=True)
 
-# Adjust layout for better spacing
-plt.tight_layout(pad=0.5)  # Increase padding for better spacing
-plt.savefig(output_fit_filename, dpi=400)
+# Set spine color for fit plot
+for spine in ax_fit.spines.values():
+    spine.set_color("black")
+    spine.set_linewidth(3)
 
-# set figure size for loss plot
-plt.figure(figsize=(8, 6))
+# Set tick parameters for fit plot
+ax_fit.tick_params(axis="both", colors="black", width=3)
 
-# plot train loss and test loss with different line styles and markers
-ax = sns.lineplot(
+# Loss plot
+sns.lineplot(
     x=epochs_list,
     y=train_loss_list_epochs,
-    label="train cost",
+    label="Training Set",
     markers=True,
-    linewidth=3,
-    color=palette[1],
-    data=data,
     alpha=0.8,
+    linewidth=4,
+    color=palette[1],
+    ax=ax_loss,
 )
 
 sns.lineplot(
     x=epochs_list,
     y=test_loss_list_epochs,
-    label="test cost",
+    label="Testing Set",
     markers=True,
-    linewidth=3,
+    linewidth=4,
+    alpha=0.8,
     color=palette[0],
-    data=data,
+    ax=ax_loss,
 )
 
-# set x-axis label and font size
-ax.set_xlabel("Epoch", fontsize=16)  # Increased font size for x-axis
+# Set x-axis label and font size for loss plot
+ax_loss.set_xlabel("Epoch", fontsize=20)
+ax_loss.set_ylabel(
+    r"$C_{\mathbf{\theta}}(\mathbf{X}, \mathbf{Y})$",
+    fontsize=22,
+    rotation=90,
+    labelpad=15,
+)
 
-# set y-axis label and font size
-ax.set_ylabel(
-    "Cost $C_{\\mathbf{\\theta}}$", fontsize=16
-)  # Increased font size for y-axis
+# Set y-axis to logarithmic scale for loss plot
+ax_loss.set_yscale("log")
 
-# set legend title, font size, and position
-plt.legend(title="Cost Type", loc="upper right")
+# Set fixed y limits for loss plot
+ax_loss.set_xlim(min(epochs_list), max(epochs_list))
+ax_loss.set_ylim(0.01, 1.2)
 
-# adjust spacing
-plt.tight_layout(pad=3.0)  # Increase padding for better spacing
-plt.ylim(-0.018, 1.218)
-plt.savefig(output_loss_filename, dpi=400)
+# Improve legend appearance for loss plot
+ax_loss.legend(loc="upper right", fontsize=18)
+
+# Adjust grid lines for better readability
+ax_loss.grid(True, linestyle=":", linewidth=3, alpha=0.3)
+
+# Set spine color for loss plot
+for spine in ax_loss.spines.values():
+    spine.set_color("black")
+    spine.set_linewidth(3)
+
+# Set tick parameters for loss plot
+ax_loss.tick_params(axis="both", colors="black", width=3)
+
+# Set y-axis label format to avoid exponential notation
+ax_loss.yaxis.set_major_formatter(FuncFormatter(format_func))  # Apply the formatter
+
+# Adjust layout for both plots
+fig_fit.tight_layout()
+fig_loss.tight_layout()
+
+# Set consistent left margin for both plots
+left_margin = 0.2  # Adjust this value as needed
+right_margin = 0.2  # Adjust this value as needed
+fig_fit.subplots_adjust(left=left_margin)
+fig_loss.subplots_adjust(left=left_margin)
+
+# Save the plots separately
+fig_fit.savefig(output_fit_filename, dpi=400, bbox_inches="tight")
+fig_loss.savefig(output_loss_filename, dpi=400, bbox_inches="tight")
+
+# Close the figures to free up memory
+plt.close(fig_fit)
+plt.close(fig_loss)
 
 epoch_period = num_epochs // (len(epochs_list) - 1)
 
